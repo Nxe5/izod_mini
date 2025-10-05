@@ -1,0 +1,701 @@
+# RP2040 125 kHz RFID Reader/Writer/Emulator Guide
+
+A comprehensive guide for building a custom 125 kHz LF RFID system using the RP2040 microcontroller, supporting both ASK and FSK modulation schemes, with USB/HID capabilities for ESP32 integration.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [System Architecture](#system-architecture)
+- [Hardware Design](#hardware-design)
+- [Firmware Architecture](#firmware-architecture)
+- [PCB Design Guidelines](#pcb-design-guidelines)
+- [Testing & Calibration](#testing--calibration)
+- [USB/HID Integration](#usbhid-integration)
+- [ESP32 Interface](#esp32-interface)
+- [Safety & Legal Considerations](#safety--legal-considerations)
+
+## Overview
+
+This project creates a versatile 125 kHz RFID system capable of:
+
+- **Reading** EM4100/EM4102 and compatible tags
+- **Writing** to T5577 and similar writable tags
+- **Emulating** tags for access control testing
+- **Supporting** both ASK and FSK modulation schemes
+- **Acting** as a USB/HID device for ESP32 communication
+
+### Key Features
+
+- RP2040 PIO blocks handle precise timing
+- Dual-mode operation (Reader/Tag emulation)
+- USB/HID interface for external control
+- ESP32 integration via USB or UART
+- Support for common 125 kHz formats
+
+## System Architecture
+
+### Two Implementation Paths
+
+#### Path A: Custom Analog Front-End
+- Direct analog implementation (LM358-based)
+- Full control over RF characteristics
+- More complex but educational
+
+#### Path B: Integrated Front-End (Recommended)
+- Use EM4095 or similar LF RFID IC
+- Simplified analog design
+- Faster development cycle
+
+**Recommendation**: Start with Path B for reliability, then optionally explore Path A for customization.
+
+## Hardware Design
+
+### Core Components
+
+#### RP2040 Configuration
+- **Clock**: 125 MHz (ideal for 125 kHz timing)
+- **PIO Usage**: 
+  - PIO0 SM0: Carrier generation (125 kHz)
+  - PIO0 SM1: Edge capture and timing
+  - PIO1: USB/HID and modulation control
+- **Cores**: 
+  - Core 0: Real-time RF processing
+  - Core 1: Protocol handling and USB communication
+
+#### RF Frontend (Path B - Recommended)
+
+```
+RP2040 ──→ EM4095 ──→ Antenna Circuit
+   ↑           ↓
+   └── Demod ──┘
+```
+
+**EM4095 LF Frontend IC**:
+- Built-in 125 kHz oscillator
+- ASK demodulator
+- Antenna driver
+- Power management
+
+### Antenna Design
+
+#### Coil Specifications
+- **Inductance**: 1-3 mH (typically 1.5 mH)
+- **Resistance**: < 10Ω DC
+- **Q Factor**: 20-40 (balance between range and bandwidth)
+
+#### Resonant Circuit Calculation
+For 125 kHz resonance:
+
+```
+f = 1/(2π√(LC))
+C = 1/((2π × 125000)² × L)
+
+Example: L = 1.5 mH
+C ≈ 1.08 nF
+```
+
+**Implementation**:
+- Use NP0/C0G capacitors (temperature stable)
+- Add 470-2200 pF trimmer for fine tuning
+- Parallel combination for exact resonance
+
+#### Physical Coil Options
+
+**Option 1: PCB Coil**
+- Single or multi-turn PCB traces
+- Compact, reproducible
+- Lower inductance (requires more turns)
+
+**Option 2: Wire-Wound Coil**
+- Higher Q factor
+- Better coupling
+- External mounting required
+
+### Power System
+
+#### Supply Requirements
+- **Input**: 5V USB or external
+- **RP2040**: 3.3V @ 150mA
+- **RF Section**: 5V @ 200-500mA (depending on range)
+
+#### Recommended LDO
+- **RP2040**: AP2112-3.3 or RT9193-33
+- **Analog Section**: Separate 3.3V rail with ferrite bead
+- **Decoupling**: 10µF + 0.1µF per IC
+
+### Modulation Support
+
+#### ASK (Amplitude Shift Keying)
+- **EM4100/EM4102**: Manchester encoding
+- **HID**: Proprietary format
+- **Indala**: Custom protocol
+
+#### FSK (Frequency Shift Keying)
+- **HID Prox**: 125/134 kHz shift
+- **Motorola**: Custom FSK variants
+- **T5577**: Configurable modulation
+
+### Complete BOM
+
+#### Core Components
+| Component | Part Number | Quantity | Notes |
+|-----------|-------------|----------|--------|
+| RP2040 | RP2040 | 1 | QFN-56 or Pico module |
+| LF Frontend | EM4095 | 1 | SOIC-16, or equivalent |
+| H-Bridge Driver | DRV8837 | 1 | For antenna drive |
+| LDO 3.3V | AP2112-3.3 | 1 | Low dropout |
+| Op-Amp | LMV358 | 1 | Rail-to-rail, dual |
+| Schottky Diode | BAT54 | 2 | Envelope detector |
+
+#### Passives
+| Component | Value | Quantity | Notes |
+|-----------|-------|----------|--------|
+| Resonant Cap | 1.0-2.2nF | 2-3 | NP0/C0G, parallel |
+| Trimmer Cap | 470pF-2.2nF | 1 | Fine tuning |
+| Coupling Caps | 100nF | 4 | X7R ceramic |
+| Decoupling | 10µF, 0.1µF | 6 | Tantalum + ceramic |
+| Current Limit | 4.7Ω | 1 | 1W metal film |
+| Pull-up | 10kΩ | 4 | 1% metal film |
+
+#### Connectors & Headers
+- USB-C connector (for power/data)
+- 0.1" headers for SWD programming
+- Coil connection points
+- ESP32 interface connector
+
+## Firmware Architecture
+
+### PIO Programs
+
+#### Carrier Generation (ASK Mode)
+```c
+// PIO program for 125 kHz carrier generation
+.program carrier_gen
+    set pins, 1 [15]    // High for ~4µs (125MHz/32 = ~4µs)
+    set pins, 0 [15]    // Low for ~4µs
+.wrap
+```
+
+#### FSK Carrier Generation
+```c
+// PIO program for FSK (frequency shift keying)
+.program fsk_carrier
+    // 125 kHz base frequency
+    set pins, 1 [12]
+    set pins, 0 [12]
+    // 134 kHz shift frequency  
+    set pins, 1 [10]
+    set pins, 0 [10]
+.wrap
+```
+
+#### Edge Capture
+```c
+// PIO program for precise edge timing
+.program edge_capture
+    wait 0 pin 0        // Wait for falling edge
+    mov x, osr          // Get timestamp
+    push noblock        // Push to FIFO
+    wait 1 pin 0        // Wait for rising edge
+    mov x, osr          // Get timestamp  
+    push noblock        // Push to FIFO
+.wrap
+```
+
+### Core 0: Real-Time Processing
+
+```c
+void core0_main() {
+    // Initialize PIO state machines
+    setup_carrier_pio();
+    setup_edge_capture_pio();
+    
+    while(1) {
+        switch(current_mode) {
+            case MODE_READ:
+                handle_tag_read();
+                break;
+            case MODE_WRITE:
+                handle_tag_write();
+                break;
+            case MODE_EMULATE:
+                handle_tag_emulation();
+                break;
+        }
+    }
+}
+```
+
+### Core 1: Protocol & Communication
+
+```c
+void core1_main() {
+    // USB/HID initialization
+    tud_init(BOARD_TUD_RHPORT);
+    
+    while(1) {
+        // Handle USB communication
+        tud_task();
+        
+        // Process commands from ESP32
+        process_esp32_commands();
+        
+        // Handle tag decoding
+        if(new_tag_data) {
+            decode_tag_format();
+            send_to_esp32();
+        }
+    }
+}
+```
+
+### Tag Format Support
+
+#### EM4100 Decoding
+```c
+typedef struct {
+    uint8_t format_id;
+    uint32_t facility_code;
+    uint32_t card_number;
+    uint8_t parity_bits[4];
+    uint8_t stop_bit;
+} em4100_tag_t;
+
+bool decode_em4100(uint64_t raw_data, em4100_tag_t* tag) {
+    // Extract header (9 bits of '1')
+    if((raw_data >> 55) != 0x1FF) return false;
+    
+    // Extract data bits with parity checking
+    for(int row = 0; row < 10; row++) {
+        uint8_t row_data = (raw_data >> (50 - row*5)) & 0x1F;
+        if(!verify_row_parity(row_data)) return false;
+    }
+    
+    // Extract facility and card number
+    tag->facility_code = (raw_data >> 32) & 0xFF;
+    tag->card_number = (raw_data >> 16) & 0xFFFF;
+    
+    return verify_column_parity(raw_data);
+}
+```
+
+#### T5577 Writing
+```c
+void write_t5577(uint32_t data, uint8_t block) {
+    // Opcode: 10 (write)
+    // Lock bit: 0
+    // Data: 32 bits
+    // Block address: 3 bits
+    
+    uint64_t write_command = (2ULL << 35) | // Opcode
+                           (data << 3) |     // Data
+                           block;            // Block address
+    
+    // Send with ASK modulation
+    send_ask_modulated(write_command, 38);
+}
+```
+
+### Emulation Mode
+
+#### Load Modulation
+```c
+void emulate_tag(uint64_t tag_data) {
+    // Wait for reader carrier
+    wait_for_carrier();
+    
+    // Modulate antenna load based on data
+    for(int bit = 0; bit < 64; bit++) {
+        bool bit_value = (tag_data >> (63-bit)) & 1;
+        
+        if(manchester_encoding) {
+            // Manchester: 1 = low-high, 0 = high-low
+            gpio_put(LOAD_MOD_PIN, bit_value ? 0 : 1);
+            sleep_us(clock_period / 2);
+            gpio_put(LOAD_MOD_PIN, bit_value ? 1 : 0);
+            sleep_us(clock_period / 2);
+        }
+    }
+}
+```
+
+## PCB Design Guidelines
+
+### Layer Stack-Up (4-layer recommended)
+1. **Top**: Components and signal routing
+2. **GND**: Ground plane
+3. **Power**: 3.3V and 5V planes
+4. **Bottom**: Signal routing and ground stitching
+
+### Critical Layout Considerations
+
+#### RF Section
+- Keep coil driver traces wide (≥20 mil)
+- Minimize loop area in H-bridge circuit
+- Place gate drive components close to MOSFETs
+- Use ground plane under RF circuits
+
+#### Analog Section
+- Separate analog ground island
+- Connect to digital ground at single point (star ground)
+- Use guard traces around sensitive analog signals
+- Place analog components away from switching circuits
+
+#### Digital Section
+- Standard digital layout practices
+- Adequate decoupling near each IC
+- Clock routing with controlled impedance
+- USB differential pair routing (90Ω ±10%)
+
+### Component Placement
+```
+[Coil Connector] ── [H-Bridge] ── [RP2040]
+                         │           │
+                    [EM4095] ── [LDO] ── [USB Connector]
+                         │           
+                    [Analog GND Island]
+```
+
+## Testing & Calibration
+
+### Bench Testing Setup
+
+#### Required Equipment
+- Oscilloscope (≥100 MHz)
+- Function generator
+- Spectrum analyzer (optional)
+- Known good RFID tags
+- T5577 blank tags
+
+#### Test Sequence
+
+**1. Power-On Test**
+- Verify 3.3V and 5V rails
+- Check RP2040 boot and USB enumeration
+- Confirm PIO programs load correctly
+
+**2. Carrier Generation**
+- Measure 125 kHz output frequency
+- Check duty cycle (should be ~50%)
+- Verify amplitude and rise/fall times
+
+**3. Antenna Tuning**
+- Sweep frequency around 125 kHz
+- Adjust trimmer for maximum amplitude
+- Measure Q factor (bandwidth)
+
+**4. Read Function**
+- Present known EM4100 tag
+- Capture demodulated signal on scope
+- Verify correct ID decoding
+
+**5. Write Function**
+- Program T5577 with test data
+- Verify with commercial reader
+- Test different block addresses
+
+**6. Emulation Test**
+- Connect to known reader system
+- Verify load modulation creates detectable signal
+- Test with different tag formats
+
+### Calibration Procedure
+
+#### Automatic Gain Control (AGC)
+```c
+void calibrate_agc(void) {
+    uint16_t baseline = read_adc();
+    uint16_t signal_level = 0;
+    
+    // Present test tag and measure signal
+    for(int gain = 0; gain < 64; gain++) {
+        set_analog_gain(gain);
+        signal_level = read_adc() - baseline;
+        
+        if(signal_level > TARGET_SIGNAL_LEVEL) {
+            optimal_gain = gain;
+            break;
+        }
+    }
+}
+```
+
+#### Bit Timing Calibration
+```c
+void calibrate_timing(void) {
+    // Measure preamble to determine bit period
+    uint32_t edge_times[20];
+    int edge_count = capture_edges(edge_times, 20);
+    
+    if(edge_count >= 18) {
+        // Calculate average bit period from preamble
+        uint32_t total_time = edge_times[17] - edge_times[1];
+        bit_period_us = total_time / 16; // 16 bit preamble
+        
+        // Set PIO timing accordingly
+        update_pio_timing(bit_period_us);
+    }
+}
+```
+
+## USB/HID Integration
+
+### HID Descriptor
+The RP2040 will present itself as a custom HID device for ESP32 communication:
+
+```c
+// HID Report Descriptor for RFID interface
+static const uint8_t hid_report_descriptor[] = {
+    HID_USAGE_PAGE(HID_USAGE_PAGE_VENDOR),
+    HID_USAGE(0x01),
+    HID_COLLECTION(HID_COLLECTION_APPLICATION),
+    
+    // Input report (tag data to host)
+    HID_USAGE(0x02),
+    HID_LOGICAL_MIN(0),
+    HID_LOGICAL_MAX_N(255, 2),
+    HID_REPORT_SIZE(8),
+    HID_REPORT_COUNT(64),
+    HID_INPUT(HID_DATA | HID_VARIABLE | HID_ABSOLUTE),
+    
+    // Output report (commands from host)
+    HID_USAGE(0x03),
+    HID_LOGICAL_MIN(0),
+    HID_LOGICAL_MAX_N(255, 2),
+    HID_REPORT_SIZE(8),
+    HID_REPORT_COUNT(64),
+    HID_OUTPUT(HID_DATA | HID_VARIABLE | HID_ABSOLUTE),
+    
+    HID_END_COLLECTION
+};
+```
+
+### Command Protocol
+```c
+typedef struct {
+    uint8_t command;        // Command type
+    uint8_t mode;          // Read/Write/Emulate
+    uint8_t format;        // EM4100, T5577, etc.
+    uint8_t modulation;    // ASK, FSK
+    uint64_t data;         // Tag data
+    uint8_t checksum;      // Data integrity
+} rfid_command_t;
+
+// Command types
+#define CMD_READ_TAG        0x01
+#define CMD_WRITE_TAG       0x02
+#define CMD_EMULATE_TAG     0x03
+#define CMD_SET_MODE        0x04
+#define CMD_CALIBRATE       0x05
+```
+
+### USB Task Handler
+```c
+void usb_hid_task(void) {
+    if(tud_hid_ready()) {
+        // Send tag data if available
+        if(new_tag_detected) {
+            rfid_command_t response = {
+                .command = CMD_READ_TAG,
+                .format = detected_format,
+                .data = tag_data,
+                .checksum = calculate_checksum(&response)
+            };
+            
+            tud_hid_report(0, &response, sizeof(response));
+            new_tag_detected = false;
+        }
+    }
+}
+
+// Handle commands from ESP32
+void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, 
+                          hid_report_type_t report_type, 
+                          uint8_t const* buffer, uint16_t bufsize) {
+    
+    rfid_command_t* cmd = (rfid_command_t*)buffer;
+    
+    if(verify_checksum(cmd)) {
+        switch(cmd->command) {
+            case CMD_WRITE_TAG:
+                write_tag_data(cmd->data, cmd->format);
+                break;
+            case CMD_EMULATE_TAG:
+                start_emulation(cmd->data, cmd->format);
+                break;
+            case CMD_SET_MODE:
+                set_operation_mode(cmd->mode);
+                break;
+        }
+    }
+}
+```
+
+## ESP32 Interface
+
+### Hardware Connection
+The RP2040 connects to the ESP32 Pico D4 via USB, presenting as an HID device:
+
+```
+ESP32 Pico D4 ──USB──> RP2040 RFID System
+     │                      │
+     └── WiFi/BLE     └── 125kHz RF
+     │                      
+     └── Additional I/O
+```
+
+### ESP32 Code Example
+```c
+#include "esp_err.h"
+#include "tinyusb.h"
+#include "tusb_hid.h"
+
+// HID device handle
+static hid_device_t hid_device;
+
+void rfid_init(void) {
+    // Initialize USB host
+    tinyusb_config_t tusb_cfg = {
+        .device_descriptor = NULL,
+        .string_descriptor = NULL,
+        .configuration_descriptor = NULL,
+    };
+    
+    ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+    
+    // Setup HID interface
+    hid_host_driver_config_t hid_config = {
+        .create_background_task = true,
+        .task_priority = 5,
+        .stack_size = 4096,
+        .callback = hid_callback,
+    };
+    
+    ESP_ERROR_CHECK(hid_host_install(&hid_config));
+}
+
+void hid_callback(hid_host_device_handle_t dev, 
+                  const hid_host_driver_event_t event, 
+                  void *arg) {
+    
+    switch(event.event) {
+        case HID_HOST_DRIVER_EVENT_CONNECTED:
+            ESP_LOGI(TAG, "RFID device connected");
+            hid_device = dev;
+            break;
+            
+        case HID_HOST_DRIVER_EVENT_INPUT_REPORT:
+            handle_rfid_report(event.input_report.data, 
+                             event.input_report.length);
+            break;
+    }
+}
+
+void send_rfid_command(rfid_command_t* cmd) {
+    cmd->checksum = calculate_checksum(cmd);
+    
+    esp_err_t ret = hid_host_device_output_report(hid_device, 
+                                                 (uint8_t*)cmd, 
+                                                 sizeof(*cmd));
+    if(ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to send RFID command: %s", 
+                esp_err_to_name(ret));
+    }
+}
+```
+
+### Integration Examples
+
+#### Read Tag and Send to Cloud
+```c
+void rfid_read_task(void *pvParameters) {
+    rfid_command_t cmd = {
+        .command = CMD_READ_TAG,
+        .mode = MODE_CONTINUOUS,
+        .format = FORMAT_AUTO_DETECT
+    };
+    
+    while(1) {
+        send_rfid_command(&cmd);
+        
+        // Wait for response
+        if(xQueueReceive(rfid_queue, &tag_data, pdMS_TO_TICKS(1000))) {
+            // Send to cloud via WiFi
+            send_to_cloud(tag_data.id, tag_data.format);
+            
+            // Update local database
+            update_access_log(tag_data);
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+```
+
+#### Clone Tag Operation
+```c
+esp_err_t clone_tag(uint64_t source_id, tag_format_t format) {
+    rfid_command_t cmd = {
+        .command = CMD_WRITE_TAG,
+        .format = format,
+        .data = source_id,
+        .modulation = ASK_MANCHESTER
+    };
+    
+    // Send write command
+    send_rfid_command(&cmd);
+    
+    // Wait for completion
+    EventBits_t bits = xEventGroupWaitBits(rfid_events, 
+                                          WRITE_COMPLETE_BIT,
+                                          pdTRUE, pdFALSE,
+                                          pdMS_TO_TICKS(5000));
+    
+    return (bits & WRITE_COMPLETE_BIT) ? ESP_OK : ESP_ERR_TIMEOUT;
+}
+```
+
+## Safety & Legal Considerations
+
+### RF Safety
+- **Power Limits**: Keep field strength below 7 dBμA/m @ 10m (FCC Part 15)
+- **SAR Limits**: Ensure compliance with local RF exposure limits
+- **EMC Testing**: Verify emissions compliance before deployment
+
+### Legal Requirements
+- **Authorization**: Only clone/emulate tags you own or have explicit permission to use
+- **Access Control**: Unauthorized bypassing of access systems is illegal in most jurisdictions
+- **Testing**: Ensure you have permission before testing against live access control systems
+- **Data Protection**: Handle any collected tag data according to local privacy laws
+
+### Best Practices
+- **Secured Development**: Use hardware security features when available
+- **Logging**: Maintain audit logs of all operations
+- **Physical Security**: Secure the device against tampering
+- **Update Mechanism**: Implement secure firmware update capability
+
+### Disclaimer
+This documentation is for educational purposes. Users are responsible for ensuring their implementations comply with local laws, regulations, and organizational policies. The authors assume no liability for misuse of this information.
+
+---
+
+## Next Steps
+
+1. **Prototype Development**: Build initial hardware on breadboard
+2. **Firmware Implementation**: Develop and test PIO programs
+3. **PCB Design**: Create production-ready PCB layout
+4. **ESP32 Integration**: Implement HID communication
+5. **Field Testing**: Validate with real-world scenarios
+6. **Certification**: Pursue regulatory approval if needed
+
+## Resources & References
+
+- [RP2040 Datasheet](https://datasheets.raspberrypi.org/rp2040/rp2040-datasheet.pdf)
+- [EM4095 Datasheet](https://www.microchip.com/wwwproducts/en/EM4095)
+- [T5577 Programming Guide](https://www.atmel.com/Images/Atmel-9187-RFID-T5577-Datasheet.pdf)
+- [125 kHz RFID Standards](https://www.iso.org/standard/39693.html)
+- [FCC Part 15 Regulations](https://www.fcc.gov/general/part-15-radio-frequency-devices)
+
+---
+
+*This guide provides a comprehensive foundation for building a professional 125 kHz RFID system. Adapt the designs and code examples to your specific requirements and local regulations.*

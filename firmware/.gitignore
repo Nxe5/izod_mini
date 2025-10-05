@@ -1,0 +1,13 @@
+.pio/
+.vscode/
+.DS_Store
+.idea/
+.cache/
+build/
+# Common compiler outputs (usually inside .pio, but keep as safety)
+*.o
+*.d
+*.a
+*.elf
+*.bin
+*.map

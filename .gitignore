@@ -1,0 +1,267 @@
+# =============================================================================
+# Izod Mini Project .gitignore
+# =============================================================================
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.cproject
+.settings/
+
+# PlatformIO
+firmware/.pio/
+firmware/.pioenvs/
+firmware/.piolibdeps/
+firmware/lib/readme.txt
+firmware/pioenvs/
+firmware/piolibdeps/
+
+# Build outputs
+firmware/build/
+firmware/dist/
+firmware/*.bin
+firmware/*.elf
+firmware/*.map
+firmware/sdkconfig
+firmware/sdkconfig.old
+
+# KiCad temporary files
+hardware/**/*-cache.lib
+hardware/**/*-rescue.lib
+hardware/**/*.bak
+hardware/**/*.bck
+hardware/**/*.kicad_pcb-bak
+hardware/**/*.kicad_sch-bak
+hardware/**/*-backups/
+hardware/**/*.net
+hardware/**/*.dsn
+hardware/**/*.ses
+hardware/**/*.pro
+hardware/**/*.job
+hardware/**/*.xml
+hardware/**/*.csv
+hardware/**/*.pos
+hardware/**/*.drl
+hardware/**/*.gbr
+hardware/**/*.gbrjob
+hardware/**/*.gko
+hardware/**/*.gm1
+hardware/**/*.gm2
+hardware/**/*.gm3
+hardware/**/*.gm4
+hardware/**/*.gm5
+hardware/**/*.gm6
+hardware/**/*.gm7
+hardware/**/*.gm8
+hardware/**/*.gm9
+hardware/**/*.gm10
+hardware/**/*.gm11
+hardware/**/*.gm12
+hardware/**/*.gm13
+hardware/**/*.gm14
+hardware/**/*.gm15
+hardware/**/*.gm16
+hardware/**/*.gts
+hardware/**/*.gbs
+hardware/**/*.gtp
+hardware/**/*.gbp
+hardware/**/*.gto
+hardware/**/*.gbo
+
+# 3D Model temporary files
+mechanical/**/*.step~
+mechanical/**/*.stp~
+mechanical/**/*.iges~
+mechanical/**/*.igs~
+mechanical/**/*.stl~
+mechanical/**/*.obj~
+mechanical/**/*.3mf~
+mechanical/**/*.amf~
+mechanical/**/*.ply~
+mechanical/**/*_recovered*
+mechanical/**/~$*
+mechanical/**/*.tmp
+mechanical/**/*.temp
+
+# CAD software specific
+mechanical/**/Backup_of_*
+mechanical/**/Version Control.fvc
+mechanical/**/Version Control.fvs
+
+# Fusion 360
+mechanical/**/*.f3d.lock
+mechanical/**/*.f3z.lock
+
+# SolidWorks
+mechanical/**/*.SLDPRT.lock
+mechanical/**/*.SLDASM.lock
+mechanical/**/*.SLDDRW.lock
+mechanical/**/*~$*
+
+# FreeCAD
+mechanical/**/*.FCStd1
+mechanical/**/*.FCStd~
+
+# Manufacturing files (keep in gerbers/ folder but ignore temp)
+hardware/**/temp_gerbers/
+hardware/**/temp_drill/
+hardware/**/temp_assembly/
+
+# Documentation temporary files
+docs/**/*.tmp
+docs/**/*.temp
+docs/**/*.aux
+docs/**/*.log
+docs/**/*.toc
+docs/**/*.out
+docs/**/*.fdb_latexmk
+docs/**/*.fls
+docs/**/*.synctex.gz
+
+# Node.js (if using for documentation generation)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Python (if using for scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Dependency directories
+lib-cov/
+
+# Compiled binary addons
+build/Release
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Secrets and keys
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+.secrets/
+
+# Test results
+test-results/
+coverage/
+*.lcov
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Archive files
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.rar
+*.7z
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Local configuration files
+local.ini
+local.conf
+local.json
+.local/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated documentation
+docs/_build/
+docs/build/
+site/
+
+# Release artifacts (except official releases)
+releases/
+dist/
+*.deb
+*.rpm
+*.dmg
+*.exe
+*.msi
+
+# Keep important files
+!hardware/**/gerbers/*.gbr
+!hardware/**/gerbers/*.drl
+!hardware/**/gerbers/*.gbrjob
+!hardware/**/bom/*.csv
+!hardware/**/bom/*.xlsx
+!mechanical/**/renders/*.png
+!mechanical/**/renders/*.jpg
+!mechanical/**/renders/*.jpeg
+!docs/**/*.md
+!docs/**/*.pdf
+!README.md
+!LICENSE
+!CONTRIBUTING.md
+!.gitignore
+

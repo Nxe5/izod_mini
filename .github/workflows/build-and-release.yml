@@ -1,0 +1,228 @@
+name: Build and Release Firmware
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on semantic version tags like v1.0.0, v1.2.3, etc.
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        environment: [esp32-hardware, esp32-hardware-debug, esp32-hardware-release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for proper versioning
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install PlatformIO
+      run: |
+        pip install platformio
+        pio --version
+    
+    - name: Cache PlatformIO dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-pio-${{ hashFiles('firmware/platformio.ini') }}
+        restore-keys: |
+          ${{ runner.os }}-pio-
+    
+    - name: Build firmware
+      run: |
+        cd firmware
+        pio run -e ${{ matrix.environment }}
+      env:
+        PLATFORMIO_BUILD_FLAGS: -DIZOD_FW_VERSION=\"${{ github.ref_name }}\"
+    
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: firmware-${{ matrix.environment }}
+        path: firmware/.pio/build/${{ matrix.environment }}/firmware.bin
+        retention-days: 30
+
+  run-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install PlatformIO
+      run: |
+        pip install platformio
+        pio --version
+    
+    - name: Install SDL2 for testing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev
+    
+    - name: Run unit tests
+      run: |
+        cd firmware
+        pio test -e native-test
+    
+    - name: Run emulation test
+      run: |
+        cd firmware
+        pio run -e native-emulation
+        timeout 10s ./.pio/build/native-emulation/program || true
+
+  create-release:
+    needs: [build-firmware, run-tests]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Generate firmware manifest
+      run: |
+        mkdir -p release
+        echo "Izod Mini Firmware Release ${{ github.ref_name }}" > release/README.md
+        echo "" >> release/README.md
+        echo "## Firmware Files" >> release/README.md
+        echo "" >> release/README.md
+        
+        # Copy firmware files
+        for env in esp32-hardware esp32-hardware-debug esp32-hardware-release; do
+          if [ -f "firmware-$env/firmware.bin" ]; then
+            cp "firmware-$env/firmware.bin" "release/izod-mini-firmware-$env-${{ github.ref_name }}.bin"
+            echo "- \`izod-mini-firmware-$env-${{ github.ref_name }}.bin\` - $env build" >> release/README.md
+          fi
+        done
+        
+        echo "" >> release/README.md
+        echo "## Installation Instructions" >> release/README.md
+        echo "" >> release/README.md
+        echo "1. Download the appropriate firmware file for your needs:" >> release/README.md
+        echo "   - \`esp32-hardware\` - Standard production build" >> release/README.md
+        echo "   - \`esp32-hardware-debug\` - Debug build with verbose logging" >> release/README.md
+        echo "   - \`esp32-hardware-release\` - Optimized release build" >> release/README.md
+        echo "" >> release/README.md
+        echo "2. Flash the firmware to your ESP32-PICO-V3-02 using PlatformIO:" >> release/README.md
+        echo "   \`\`\`bash" >> release/README.md
+        echo "   pio run -e esp32-hardware --target upload" >> release/README.md
+        echo "   \`\`\`" >> release/README.md
+        echo "" >> release/README.md
+        echo "3. Or use ESP32 Flash Tool with the downloaded .bin file" >> release/README.md
+    
+    - name: Generate checksums
+      run: |
+        cd release
+        sha256sum *.bin > checksums.sha256
+        md5sum *.bin > checksums.md5
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Izod Mini Firmware ${{ github.ref_name }}
+        body_path: release/README.md
+        files: |
+          release/*.bin
+          release/checksums.sha256
+          release/checksums.md5
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sign-firmware:
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download release artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Set up signing environment
+      run: |
+        # Create signing directory
+        mkdir -p signing
+        cd signing
+        
+        # Create Ed25519 key pair if not exists
+        if [ ! -f "ed25519_private.pem" ]; then
+          openssl genpkey -algorithm Ed25519 -out ed25519_private.pem
+          openssl pkey -in ed25519_private.pem -pubout -out ed25519_public.pem
+        fi
+        
+        # Create GPG key if not exists
+        if [ ! -f "gpg_private.key" ]; then
+          gpg --batch --full-generate-key <<EOF
+          Key-Type: RSA
+          Key-Length: 4096
+          Subkey-Type: RSA
+          Subkey-Length: 4096
+          Name-Real: Izod Mini Firmware
+          Name-Email: firmware@izod-mini.dev
+          Expire-Date: 0
+          %no-protection
+          %commit
+          EOF
+          
+          gpg --export-secret-keys --armor > gpg_private.key
+          gpg --export --armor > gpg_public.key
+        fi
+    
+    - name: Sign firmware with Ed25519
+      run: |
+        cd signing
+        
+        # Sign each firmware file
+        for env in esp32-hardware esp32-hardware-debug esp32-hardware-release; do
+          if [ -f "../firmware-$env/firmware.bin" ]; then
+            openssl dgst -sha256 -sign ed25519_private.pem -out "firmware-$env.sig" "../firmware-$env/firmware.bin"
+            echo "Signed firmware-$env with Ed25519"
+          fi
+        done
+    
+    - name: Sign firmware with GPG
+      run: |
+        cd signing
+        
+        # Import GPG key
+        gpg --import gpg_private.key
+        
+        # Sign each firmware file
+        for env in esp32-hardware esp32-hardware-debug esp32-hardware-release; do
+          if [ -f "../firmware-$env/firmware.bin" ]; then
+            gpg --armor --detach-sign --output "firmware-$env.sig.gpg" "../firmware-$env/firmware.bin"
+            echo "Signed firmware-$env with GPG"
+          fi
+        done
+    
+    - name: Upload signed firmware
+      uses: actions/upload-artifact@v3
+      with:
+        name: signed-firmware
+        path: signing/*.sig*
+        retention-days: 30

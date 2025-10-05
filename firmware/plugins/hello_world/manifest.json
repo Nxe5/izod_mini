@@ -1,0 +1,31 @@
+{
+  "name": "Hello World",
+  "version": "1.0.0",
+  "author": "Izod Mini Team",
+  "description": "Simple hello world plugin demonstrating the plugin API",
+  "category": 5,
+  "compatibility_flags": 4,
+  "api_version": "1.0.0",
+  "memory_required": 4096,
+  "entry_point": "hello_world_main",
+  "icon": {
+    "width": 32,
+    "height": 32,
+    "format": "bmp"
+  },
+  "permissions": [
+    "display",
+    "input",
+    "system"
+  ],
+  "build": {
+    "source_files": [
+      "hello_world.cpp"
+    ],
+    "include_dirs": [
+      "../../include"
+    ],
+    "libraries": []
+  }
+}
+

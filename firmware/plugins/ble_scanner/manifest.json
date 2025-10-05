@@ -1,0 +1,35 @@
+{
+  "name": "BLE Scanner",
+  "version": "1.0.0",
+  "author": "Izod Mini Team",
+  "description": "Bluetooth Low Energy device scanner and analyzer",
+  "category": 1,
+  "compatibility_flags": 68,
+  "api_version": "1.0.0",
+  "memory_required": 14336,
+  "entry_point": "ble_scanner_main",
+  "icon": {
+    "width": 32,
+    "height": 32,
+    "format": "bmp"
+  },
+  "permissions": [
+    "display",
+    "input",
+    "system",
+    "bluetooth",
+    "storage"
+  ],
+  "build": {
+    "source_files": [
+      "ble_scanner.cpp"
+    ],
+    "include_dirs": [
+      "../../include"
+    ],
+    "libraries": [
+      "BLE"
+    ]
+  }
+}
+

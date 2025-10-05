@@ -1,0 +1,35 @@
+{
+  "name": "WiFi Scanner",
+  "version": "1.0.0",
+  "author": "Izod Mini Team",
+  "description": "Comprehensive WiFi network scanner and analyzer",
+  "category": 1,
+  "compatibility_flags": 36,
+  "api_version": "1.0.0",
+  "memory_required": 12288,
+  "entry_point": "wifi_scanner_main",
+  "icon": {
+    "width": 32,
+    "height": 32,
+    "format": "bmp"
+  },
+  "permissions": [
+    "display",
+    "input",
+    "system",
+    "wifi",
+    "storage"
+  ],
+  "build": {
+    "source_files": [
+      "wifi_scanner.cpp"
+    ],
+    "include_dirs": [
+      "../../include"
+    ],
+    "libraries": [
+      "WiFi"
+    ]
+  }
+}
+

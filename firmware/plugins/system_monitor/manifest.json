@@ -1,0 +1,32 @@
+{
+  "name": "System Monitor",
+  "version": "1.0.0",
+  "author": "Izod Mini Team",
+  "description": "Real-time system monitoring and diagnostics",
+  "category": 2,
+  "compatibility_flags": 4,
+  "api_version": "1.0.0",
+  "memory_required": 8192,
+  "entry_point": "system_monitor_main",
+  "icon": {
+    "width": 32,
+    "height": 32,
+    "format": "bmp"
+  },
+  "permissions": [
+    "display",
+    "input",
+    "system",
+    "storage"
+  ],
+  "build": {
+    "source_files": [
+      "system_monitor.cpp"
+    ],
+    "include_dirs": [
+      "../../include"
+    ],
+    "libraries": []
+  }
+}
+

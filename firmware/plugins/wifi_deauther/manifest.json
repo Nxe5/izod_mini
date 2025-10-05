@@ -1,0 +1,41 @@
+{
+  "name": "WiFi Deauther",
+  "version": "1.0.0",
+  "author": "Izod Mini Team",
+  "description": "WiFi deauthentication tool for network security testing",
+  "category": 1,
+  "compatibility_flags": 36,
+  "api_version": "1.0.0",
+  "memory_required": 16384,
+  "entry_point": "wifi_deauther_main",
+  "icon": {
+    "width": 32,
+    "height": 32,
+    "format": "bmp"
+  },
+  "permissions": [
+    "display",
+    "input",
+    "system",
+    "wifi",
+    "storage"
+  ],
+  "build": {
+    "source_files": [
+      "wifi_deauther.cpp"
+    ],
+    "include_dirs": [
+      "../../include"
+    ],
+    "libraries": [
+      "WiFi",
+      "esp_wifi"
+    ]
+  },
+  "warnings": [
+    "This tool is for educational and authorized testing only",
+    "Unauthorized use may violate local laws",
+    "Use responsibly and ethically"
+  ]
+}
+

@@ -1,0 +1,44 @@
+{
+  "name": "Evil Portal",
+  "version": "1.0.0",
+  "author": "Izod Mini Team",
+  "description": "WiFi captive portal for authorized penetration testing",
+  "category": 1,
+  "compatibility_flags": 36,
+  "api_version": "1.0.0",
+  "memory_required": 20480,
+  "entry_point": "evil_portal_main",
+  "icon": {
+    "width": 32,
+    "height": 32,
+    "format": "bmp"
+  },
+  "permissions": [
+    "display",
+    "input",
+    "system",
+    "wifi",
+    "storage"
+  ],
+  "build": {
+    "source_files": [
+      "evil_portal.cpp"
+    ],
+    "include_dirs": [
+      "../../include"
+    ],
+    "libraries": [
+      "WiFi",
+      "WebServer",
+      "DNSServer",
+      "SPIFFS"
+    ]
+  },
+  "warnings": [
+    "This tool is for educational and authorized testing only",
+    "Unauthorized use may violate local laws and regulations",
+    "Only use on networks you own or have explicit permission to test",
+    "Use responsibly and ethically"
+  ]
+}
+

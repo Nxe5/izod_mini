@@ -1,0 +1,344 @@
+name: Release and Sign
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0, v1.1.0, v2.0.0
+
+env:
+  FIRMWARE_VERSION: ${{ github.ref_name }}
+
+jobs:
+  detect-release-type:
+    runs-on: ubuntu-latest
+    outputs:
+      release-type: ${{ steps.detect.outputs.release-type }}
+      is-major: ${{ steps.detect.outputs.is-major }}
+      is-minor: ${{ steps.detect.outputs.is-minor }}
+      is-patch: ${{ steps.detect.outputs.is-patch }}
+    steps:
+    - name: Detect release type
+      id: detect
+      run: |
+        TAG="${{ github.ref_name }}"
+        echo "Processing tag: $TAG"
+        
+        # Extract version components
+        VERSION=${TAG#v}  # Remove 'v' prefix
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+        
+        echo "Version components: $MAJOR.$MINOR.$PATCH"
+        
+        # Determine release type
+        if [[ "$MINOR" == "0" && "$PATCH" == "0" ]]; then
+          echo "release-type=major" >> $GITHUB_OUTPUT
+          echo "is-major=true" >> $GITHUB_OUTPUT
+          echo "is-minor=false" >> $GITHUB_OUTPUT
+          echo "is-patch=false" >> $GITHUB_OUTPUT
+        elif [[ "$PATCH" == "0" ]]; then
+          echo "release-type=minor" >> $GITHUB_OUTPUT
+          echo "is-major=false" >> $GITHUB_OUTPUT
+          echo "is-minor=true" >> $GITHUB_OUTPUT
+          echo "is-patch=false" >> $GITHUB_OUTPUT
+        else
+          echo "release-type=patch" >> $GITHUB_OUTPUT
+          echo "is-major=false" >> $GITHUB_OUTPUT
+          echo "is-minor=false" >> $GITHUB_OUTPUT
+          echo "is-patch=true" >> $GITHUB_OUTPUT
+        fi
+
+  build-and-release:
+    needs: detect-release-type
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for proper tagging
+    
+    - name: Setup Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    
+    - name: Generate Gerber Files
+      run: |
+        echo "This step would generate gerber files from KiCad projects"
+        echo "For now, we'll create placeholder files"
+        mkdir -p hardware/main-pcb/gerbers hardware/flex-pcb/gerbers
+        touch hardware/main-pcb/gerbers/placeholder.txt
+        touch hardware/flex-pcb/gerbers/placeholder.txt
+        echo "Gerber files would be generated here from KiCad projects"
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Setup PlatformIO
+      run: |
+        pip install platformio
+        pio --version
+    
+    - name: Build Firmware (Multiple Configurations)
+      run: |
+        cd firmware
+        
+        # Clean previous builds
+        pio run --target clean
+        
+        # Build release configuration
+        echo "Building release firmware..."
+        pio run -e esp32-pico-v3-02-release
+        
+        # Build debug configuration  
+        echo "Building debug firmware..."
+        pio run -e esp32-pico-v3-02-debug
+        
+        # Build standard configuration
+        echo "Building standard firmware..."
+        pio run -e esp32-pico-v3-02
+        
+        echo "All firmware configurations built successfully"
+    
+    - name: Generate Firmware Manifest
+      run: |
+        cd firmware
+        python scripts/generate_manifest.py
+        echo "Firmware manifest generated"
+    
+    - name: Package Firmware Artifacts
+      run: |
+        cd firmware
+        mkdir -p ../firmware-release
+        
+        # Package release build
+        if [ -f .pio/build/esp32-pico-v3-02-release/firmware.bin ]; then
+          cp .pio/build/esp32-pico-v3-02-release/firmware.bin ../firmware-release/izod-mini-${{ github.ref_name }}-release.bin
+          cp .pio/build/esp32-pico-v3-02-release/bootloader.bin ../firmware-release/bootloader-release.bin
+          cp .pio/build/esp32-pico-v3-02-release/partitions.bin ../firmware-release/partitions-release.bin
+        fi
+        
+        # Package debug build
+        if [ -f .pio/build/esp32-pico-v3-02-debug/firmware.bin ]; then
+          cp .pio/build/esp32-pico-v3-02-debug/firmware.bin ../firmware-release/izod-mini-${{ github.ref_name }}-debug.bin
+          cp .pio/build/esp32-pico-v3-02-debug/bootloader.bin ../firmware-release/bootloader-debug.bin
+          cp .pio/build/esp32-pico-v3-02-debug/partitions.bin ../firmware-release/partitions-debug.bin
+        fi
+        
+        # Package standard build
+        if [ -f .pio/build/esp32-pico-v3-02/firmware.bin ]; then
+          cp .pio/build/esp32-pico-v3-02/firmware.bin ../firmware-release/izod-mini-${{ github.ref_name }}.bin
+          cp .pio/build/esp32-pico-v3-02/bootloader.bin ../firmware-release/bootloader.bin
+          cp .pio/build/esp32-pico-v3-02/partitions.bin ../firmware-release/partitions.bin
+        fi
+        
+        # Copy manifest and other metadata
+        if [ -f firmware.json ]; then
+          cp firmware.json ../firmware-release/
+        fi
+        
+        echo "Firmware artifacts packaged for release"
+    
+    - name: Create Release Archive
+      run: |
+        # Create a release archive with all project files
+        tar -czf izod-mini-${{ github.ref_name }}.tar.gz \
+          --exclude='.git' \
+          --exclude='.github' \
+          --exclude='*.tar.gz' \
+          .
+    
+    - name: Install Signing Tools
+      run: |
+        # Install Ed25519 signing tools
+        pip install cryptography pynacl
+        
+        # Install GPG for compatibility
+        sudo apt-get update
+        sudo apt-get install -y gnupg
+    
+    - name: Sign Firmware Binaries
+      run: |
+        # Create signing script
+        cat > sign_firmware.py << 'EOF'
+        import os
+        import hashlib
+        from cryptography.hazmat.primitives import serialization, hashes
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from cryptography.hazmat.backends import default_backend
+        import base64
+        
+        def sign_file(file_path, private_key_pem):
+            # Load private key
+            private_key = serialization.load_pem_private_key(
+                private_key_pem.encode(),
+                password=None,
+                backend=default_backend()
+            )
+            
+            # Read file content
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            
+            # Create signature
+            signature = private_key.sign(content)
+            
+            # Save signature
+            sig_path = file_path + '.sig'
+            with open(sig_path, 'wb') as f:
+                f.write(signature)
+            
+            # Create base64 signature for manifest
+            sig_b64 = base64.b64encode(signature).decode()
+            
+            # Create SHA256 hash
+            sha256_hash = hashlib.sha256(content).hexdigest()
+            
+            return sig_b64, sha256_hash
+        
+        # Sign all firmware binaries
+        private_key_pem = os.environ.get('ED25519_PRIVATE_KEY')
+        if not private_key_pem:
+            print("No private key found, skipping signing")
+            exit(0)
+        
+        firmware_dir = 'firmware-release'
+        signed_manifest = {
+            'version': os.environ.get('FIRMWARE_VERSION', 'unknown'),
+            'release_type': '${{ needs.detect-release-type.outputs.release-type }}',
+            'signed_files': {}
+        }
+        
+        for filename in os.listdir(firmware_dir):
+            if filename.endswith('.bin'):
+                file_path = os.path.join(firmware_dir, filename)
+                print(f"Signing {filename}...")
+                sig_b64, sha256_hash = sign_file(file_path, private_key_pem)
+                signed_manifest['signed_files'][filename] = {
+                    'sha256': sha256_hash,
+                    'signature': sig_b64
+                }
+        
+        # Save signed manifest
+        import json
+        with open(os.path.join(firmware_dir, 'signatures.json'), 'w') as f:
+            json.dump(signed_manifest, f, indent=2)
+        
+        print("All firmware binaries signed successfully")
+        EOF
+        
+        python sign_firmware.py
+      env:
+        ED25519_PRIVATE_KEY: ${{ secrets.ED25519_PRIVATE_KEY }}
+    
+    - name: Create Checksums
+      run: |
+        cd firmware-release
+        
+        # Create SHA256 checksums for all files
+        sha256sum *.bin > checksums.sha256
+        sha256sum *.json >> checksums.sha256
+        
+        # Create MD5 checksums for compatibility
+        md5sum *.bin > checksums.md5
+        
+        echo "Checksums created"
+    
+    - name: Sign Release Archive (GPG Compatibility)
+      run: |
+        # Import GPG key from secrets if available
+        if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --batch --yes
+          
+          # Sign the release archive
+          gpg --armor --detach-sign --batch --yes izod-mini-${{ github.ref_name }}.tar.gz
+          
+          # Sign checksums
+          cd firmware-release
+          gpg --armor --detach-sign --batch --yes checksums.sha256
+          cd ..
+          
+          echo "GPG signatures created"
+        else
+          echo "No GPG key provided, skipping GPG signing"
+        fi
+    
+    - name: Generate Release Notes
+      run: |
+        cat > release_notes.md << EOF
+        # Izod Mini ${{ github.ref_name }}
+        
+        ## Release Type: ${{ needs.detect-release-type.outputs.release-type }}
+        
+        ### What's New
+        ${{ needs.detect-release-type.outputs.is-major == 'true' && '🚀 **Major Release** - Significant new features and potential breaking changes' || '' }}
+        ${{ needs.detect-release-type.outputs.is-minor == 'true' && '✨ **Minor Release** - New features and improvements' || '' }}
+        ${{ needs.detect-release-type.outputs.is-patch == 'true' && '🐛 **Patch Release** - Bug fixes and minor improvements' || '' }}
+        
+        ### Hardware Compatibility
+        - **Target**: ESP32-PICO-V3-02
+        - **Display**: ST7789 240x320 TFT
+        - **Touch**: MPR121 capacitive touch wheel
+        - **Audio**: PCM5102A DAC
+        - **Storage**: SD card support
+        
+        ### Firmware Variants
+        - **Standard**: Balanced performance and features
+        - **Release**: Optimized for production use
+        - **Debug**: Development and debugging features enabled
+        
+        ### Security
+        - All firmware binaries are signed with Ed25519
+        - SHA256 checksums provided for integrity verification
+        - GPG signatures available for additional verification
+        
+        ### Installation
+        1. Download the appropriate firmware binary for your needs
+        2. Verify checksums and signatures
+        3. Flash using esptool or PlatformIO
+        
+        ### Plugin System
+        This release includes the Flipper Zero-style plugin system:
+        - Dynamic plugin loading from SD card
+        - Hardware abstraction layer for plugin development
+        - Community plugin support
+        
+        ### Touch Sensitivity
+        - 5-level sensitivity system
+        - Per-electrode customization
+        - Small pad compensation
+        - Runtime calibration
+        
+        ---
+        
+        **Full Changelog**: https://github.com/\${{ github.repository }}/compare/\${{ github.event.before }}...\${{ github.ref_name }}
+        EOF
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: "Izod Mini ${{ github.ref_name }}"
+        body_path: release_notes.md
+        files: |
+          izod-mini-${{ github.ref_name }}.tar.gz
+          izod-mini-${{ github.ref_name }}.tar.gz.asc
+          firmware-release/izod-mini-${{ github.ref_name }}.bin
+          firmware-release/izod-mini-${{ github.ref_name }}-release.bin
+          firmware-release/izod-mini-${{ github.ref_name }}-debug.bin
+          firmware-release/bootloader.bin
+          firmware-release/bootloader-release.bin
+          firmware-release/bootloader-debug.bin
+          firmware-release/partitions.bin
+          firmware-release/partitions-release.bin
+          firmware-release/partitions-debug.bin
+          firmware-release/signatures.json
+          firmware-release/checksums.sha256
+          firmware-release/checksums.md5
+          firmware-release/checksums.sha256.asc
+        draft: false
+        prerelease: ${{ needs.detect-release-type.outputs.is-major == 'true' }}
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

